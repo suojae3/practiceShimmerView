@@ -1,30 +1,34 @@
-
-
 import UIKit
 
 class ViewController: UIViewController {
 
     let label = UILabel()
     let gradientLayer = CAGradientLayer()
-    
+    var fetchTask: Task<Void, Never>? // 비동기 작업을 관리하기 위한 Task 변수 선언
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        view.backgroundColor = .white
         setup()
         layout()
+        fetchData()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         gradientLayer.frame = label.bounds
-        gradientLayer.cornerRadius = label.bounds.height / 2
+        gradientLayer.cornerRadius = label.bounds.height / 3
+    }
+
+    deinit {
+        fetchTask?.cancel()
     }
 }
 
 extension ViewController {
     
     func setup() {
-        label.translatesAutoresizingMaskIntoConstraints = false
         label.text = "Shimmer"
         label.font = UIFont.preferredFont(forTextStyle: .largeTitle)
         
@@ -39,14 +43,48 @@ extension ViewController {
     
     func layout() {
         view.addSubview(label)
-        
+        label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             label.topAnchor.constraint(equalToSystemSpacingBelow: view.safeAreaLayoutGuide.topAnchor, multiplier: 1),
-            label.leadingAnchor.constraint(equalToSystemSpacingAfter: view.leadingAnchor, multiplier: 1),
-            view.trailingAnchor.constraint(equalToSystemSpacingAfter: label.trailingAnchor, multiplier: 1),
+            label.leadingAnchor.constraint(equalToSystemSpacingAfter: view.safeAreaLayoutGuide.leadingAnchor, multiplier: 1),
+            label.trailingAnchor.constraint(equalToSystemSpacingAfter: view.safeAreaLayoutGuide.trailingAnchor, multiplier: 3),
             label.heightAnchor.constraint(equalToConstant: 36),
         ])
     }
+    
+    
+    func fetchData() {
+        fetchTask = Task {
+            do {
+                
+                try await Task.sleep(nanoseconds: 10_000_000_000) // 10초 대기
+                await MainActor.run {
+                    self.label.text = "Data Loaded" // 메인 스레드에서 UI 업데이트
+                    gradientLayer.removeAllAnimations()
+                }
+            } catch {
+                // Task가 취소되면 여기서 catch
+                await MainActor.run {
+                    gradientLayer.removeAllAnimations()
+                }
+            }
+        }
+    }
+}
+
+extension UIColor {
+
+    static var gradientDarkGrey: UIColor {
+        return UIColor(red: 239 / 255.0, green: 101 / 255.0, blue: 241 / 255.0, alpha: 1)
+    }
+
+    static var gradientLightGrey: UIColor {
+        return UIColor(red: 201 / 255.0, green: 201 / 255.0, blue: 201 / 255.0, alpha: 1)
+    }
+}
+
+
+extension UIViewController {
     
     func makeAnimationGroup(previousGroup: CAAnimationGroup? = nil) -> CAAnimationGroup {
         let animDuration: CFTimeInterval = 1.5
@@ -69,20 +107,10 @@ extension ViewController {
         group.isRemovedOnCompletion = false
 
         if let previousGroup = previousGroup {
-            group.beginTime = previousGroup.beginTime + 2.33
+            group.beginTime = previousGroup.beginTime + 0.33
         }
 
         return group
     }
-}
 
-extension UIColor {
-
-    static var gradientDarkGrey: UIColor {
-        return UIColor(red: 239 / 255.0, green: 200 / 255.0, blue: 241 / 255.0, alpha: 1)
-    }
-
-    static var gradientLightGrey: UIColor {
-        return UIColor(red: 201 / 255.0, green: 100 / 255.0, blue: 201 / 255.0, alpha: 1)
-    }
 }
